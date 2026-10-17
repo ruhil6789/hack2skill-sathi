@@ -1,0 +1,22 @@
+Saathi full demo (~2.5 minutes) — speak slowly over the video
+
+File: saathi-demo-2to3min.mp4
+
+TIMELINE (≈10 seconds each):
+0:00  Landing — “Saathi is an AI companion for gig workers.”
+0:10  Registration empty — “First, the worker creates a profile.”
+0:20  Registration filled — “Name, Hindi language, delivery job, city, Swiggy.”
+0:30  Welcome + voice UI — “After signup, Saathi greets in their language. Mic for voice.”
+0:40  Message ready — “Type or speak. Pause to auto-send with voice.”
+0:50  AI reply in Hindi — “Safety tips in Hindi for Chandigarh delivery.”
+1:00  Earnings — “Multi-platform ledger: Uber, Swiggy, cash — weekly compare.”
+1:10  Shift planner — “Weather + peak hints before taking a shift.”
+1:20  Shift AI advice — “YES / MAYBE / SKIP with reasons and safety note.”
+1:30  SOS pack — “Share location, call trusted contact, checklist, 112.”
+1:40  Safety + offline sheets — “Works even when network is weak.”
+1:50  Documents + OCR — “Paste or photo OCR payslips, then explain.”
+2:00  Templates — “Saved grievance, leave, and customer replies.”
+2:10  Grievance — “Draft complaints using earnings and profile.”
+2:20  Closing — “One connected companion for real gig work.”
+
+Tip: Play fullscreen and record with SCRE.IO Only Screen while narrating.
