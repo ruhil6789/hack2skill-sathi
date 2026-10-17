@@ -1,3 +1,4 @@
+import { trimContextForMode } from "./context";
 import type { CompanionMode, WorkerContext } from "./types";
 
 export class ApiError extends Error {
@@ -30,7 +31,7 @@ export async function postChat(params: {
     body: JSON.stringify({
       message: params.message,
       mode: params.mode,
-      context: params.context,
+      context: trimContextForMode(params.mode, params.context),
       history: params.history,
     }),
     signal: params.signal,

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { MAX_TOKENS_BY_MODE } from "@/lib/constants";
+import { trimContextForMode } from "@/lib/context";
 import { cleanReplyText } from "@/lib/format";
 import { getGrokClient, getGrokModel } from "@/lib/grok";
 import { buildSystemPrompt } from "@/lib/prompts";
@@ -17,14 +19,14 @@ export async function POST(request: Request) {
 
     const message = sanitizeMessage(raw.message);
     const mode = parseMode(raw.mode);
-    const context = sanitizeContext(raw.context);
+    const context = trimContextForMode(mode, sanitizeContext(raw.context));
     const history = sanitizeHistory(raw.history);
 
     const client = getGrokClient();
     const completion = await client.chat.completions.create({
       model: getGrokModel(),
       temperature: 0.5,
-      max_tokens: 900,
+      max_tokens: MAX_TOKENS_BY_MODE[mode],
       messages: [
         { role: "system", content: buildSystemPrompt(mode, context) },
         ...history,

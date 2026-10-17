@@ -20,8 +20,8 @@ Connected workflows (evaluated as a whole, not isolated features):
 
 - **Code quality** — typed domain models, shared validators, thin API routes
 - **Security** — input allowlists, size limits, sanitized client errors (no key leakage)
-- **Efficiency** — truncated history/docs, `max_tokens`, abortable fetches
-- **Testing** — Vitest unit tests for formatting + validation
+- **Efficiency** — mode-scoped prompts + `max_tokens`, truncated history/docs/earnings, weather cache (~20 min), abortable fetches, lazy/reused OCR, lighter VAD
+- **Testing** — Vitest unit + API route mocks (validate, format, prompts, platforms, storage, weather, chat/transcribe)
 - **Accessibility** — labels, live regions, focus rings, `aria-current` / `aria-pressed`
 - **Problem statement alignment** — one companion with linked tool → chat → grievance flows
 

@@ -1,4 +1,6 @@
-/** Free Open-Meteo geocoding + forecast (no API key). */
+/** Free Open-Meteo geocoding + forecast (no API key). Cached ~20 min per city. */
+
+import { LIMITS } from "./constants";
 
 export interface WeatherHint {
   city: string;
@@ -8,8 +10,66 @@ export interface WeatherHint {
   isPeakLikely: boolean;
 }
 
+type CacheEntry = { at: number; hint: WeatherHint };
+
+const memory = new Map<string, CacheEntry>();
+
+function cacheKey(city: string): string {
+  return city.trim().toLowerCase() || "bengaluru";
+}
+
+function readCache(key: string): WeatherHint | null {
+  const mem = memory.get(key);
+  if (mem && Date.now() - mem.at < LIMITS.weatherCacheMs) return mem.hint;
+
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      const raw = sessionStorage.getItem(`saathi-weather:${key}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CacheEntry;
+        if (Date.now() - parsed.at < LIMITS.weatherCacheMs) {
+          memory.set(key, parsed);
+          return parsed.hint;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  return null;
+}
+
+function writeCache(key: string, hint: WeatherHint) {
+  const entry: CacheEntry = { at: Date.now(), hint };
+  memory.set(key, entry);
+  if (typeof sessionStorage !== "undefined") {
+    try {
+      sessionStorage.setItem(`saathi-weather:${key}`, JSON.stringify(entry));
+    } catch {
+      /* ignore quota */
+    }
+  }
+}
+
+/** Test helper — clear in-memory + session weather cache. */
+export function clearWeatherCache() {
+  memory.clear();
+  if (typeof sessionStorage !== "undefined") {
+    const keys: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k?.startsWith("saathi-weather:")) keys.push(k);
+    }
+    keys.forEach((k) => sessionStorage.removeItem(k));
+  }
+}
+
 export async function fetchWeatherHint(city: string): Promise<WeatherHint> {
   const q = city.trim() || "Bengaluru";
+  const key = cacheKey(q);
+  const cached = readCache(key);
+  if (cached) return cached;
+
   try {
     const geoRes = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en&format=json`,
@@ -17,13 +77,15 @@ export async function fetchWeatherHint(city: string): Promise<WeatherHint> {
     const geo = await geoRes.json();
     const place = geo?.results?.[0];
     if (!place) {
-      return {
+      const hint: WeatherHint = {
         city: q,
         summary: "Weather unavailable — using schedule heuristics only.",
         tempC: null,
         rainMm: null,
         isPeakLikely: isLocalPeakHour(),
       };
+      writeCache(key, hint);
+      return hint;
     }
 
     const forecastRes = await fetch(
@@ -40,13 +102,15 @@ export async function fetchWeatherHint(city: string): Promise<WeatherHint> {
     else if (hot) summary += ", hot — hydrate and shorter blocks may be safer";
     else summary += ", fair conditions";
 
-    return {
+    const hint: WeatherHint = {
       city: place.name,
       summary,
       tempC,
       rainMm,
       isPeakLikely: isLocalPeakHour() || rainy,
     };
+    writeCache(key, hint);
+    return hint;
   } catch {
     return {
       city: q,

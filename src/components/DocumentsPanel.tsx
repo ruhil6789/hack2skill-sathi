@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LIMITS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
+import { recognizeDocumentText } from "@/lib/ocr";
 import type { Language } from "@/lib/types";
 
 interface Props {
@@ -19,16 +20,12 @@ export function DocumentsPanel({ language, pending, onExplain, onDispute }: Prop
   async function runOcr(file: File) {
     setOcrStatus("Reading photo…");
     try {
-      const Tesseract = await import("tesseract.js");
-      const result = await Tesseract.recognize(file, "eng", {
-        logger: () => undefined,
-      });
-      const text = (result.data.text || "").trim();
+      const text = await recognizeDocumentText(file);
       if (!text) {
         setOcrStatus("No text found. Try a clearer photo or paste text.");
         return;
       }
-      setDocText(text.slice(0, LIMITS.documentChars));
+      setDocText(text);
       setOcrStatus("OCR done — review text, then explain.");
     } catch {
       setOcrStatus("OCR failed. Paste the text instead.");

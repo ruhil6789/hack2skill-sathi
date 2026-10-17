@@ -41,7 +41,21 @@ export const LIMITS = {
   nameChars: 80,
   cityChars: 80,
   platformChars: 80,
+  weatherCacheMs: 20 * 60 * 1000, // 20 min
 } as const;
+
+/** Mode-scoped completion caps — shorter modes finish faster and cost less. */
+export const MAX_TOKENS_BY_MODE: Record<CompanionMode, number> = {
+  chat: 500,
+  earnings: 550,
+  shift: 450,
+  sos: 350,
+  safety: 400,
+  rights: 500,
+  documents: 600,
+  templates: 400,
+  grievance: 700,
+};
 
 export const ALLOWED_AUDIO_TYPES = new Set([
   "audio/webm",

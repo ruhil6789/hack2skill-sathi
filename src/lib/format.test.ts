@@ -17,4 +17,16 @@ describe("cleanReplyText", () => {
   it("collapses excess blank lines", () => {
     expect(cleanReplyText("A\n\n\n\nB")).toBe("A\n\nB");
   });
+
+  it("leaves Hindi plain text untouched", () => {
+    expect(cleanReplyText("नमस्ते रात की डिलीवरी सुरक्षित रखें")).toBe(
+      "नमस्ते रात की डिलीवरी सुरक्षित रखें",
+    );
+  });
+
+  it("handles empty input", () => {
+    expect(cleanReplyText("")).toBe("");
+    expect(cleanReplyText("   ")).toBe("");
+  });
 });
+

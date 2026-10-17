@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertAudioFile,
   parseMode,
   publicErrorMessage,
   sanitizeHistory,
@@ -61,3 +62,50 @@ describe("publicErrorMessage", () => {
     expect(result.message).not.toMatch(/XAI_API_KEY/);
   });
 });
+
+describe("assertAudioFile", () => {
+  it("rejects empty and oversized files", () => {
+    expect(() =>
+      assertAudioFile(new File([], "empty.webm", { type: "audio/webm" })),
+    ).toThrow(/required/i);
+
+    const big = new File([new Uint8Array(9 * 1024 * 1024)], "big.webm", {
+      type: "audio/webm",
+    });
+    expect(() => assertAudioFile(big)).toThrow(/too large/i);
+  });
+
+  it("accepts webm audio", () => {
+    expect(() =>
+      assertAudioFile(
+        new File(["bytes"], "clip.webm", { type: "audio/webm" }),
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe("sanitizeHistory", () => {
+  it("clamps long turn content", () => {
+    const history = sanitizeHistory([
+      { role: "user", content: "x".repeat(5000) },
+    ]);
+    expect(history[0]?.content.length).toBe(2000);
+  });
+});
+
+describe("sanitizeContext emergency fields", () => {
+  it("keeps emergency contact on profile", () => {
+    const ctx = sanitizeContext({
+      profile: {
+        name: "Ravi",
+        language: "hi",
+        jobType: "delivery",
+        emergencyName: "Priya",
+        emergencyPhone: "9876543210",
+      },
+    });
+    expect(ctx.profile.emergencyName).toBe("Priya");
+    expect(ctx.profile.emergencyPhone).toBe("9876543210");
+  });
+});
+
