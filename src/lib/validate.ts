@@ -50,6 +50,17 @@ export function parseJobType(value: unknown): JobType {
   return JOB_TYPES_SET.has(job) ? job : "other";
 }
 
+const PLATFORMS = new Set([
+  "swiggy",
+  "zomato",
+  "uber",
+  "ola",
+  "rapido",
+  "blinkit",
+  "cash",
+  "other",
+]);
+
 export function sanitizeProfile(raw: unknown): WorkerProfile {
   const src = isRecord(raw) ? raw : {};
   return {
@@ -58,6 +69,8 @@ export function sanitizeProfile(raw: unknown): WorkerProfile {
     jobType: parseJobType(src.jobType),
     city: clampString(asString(src.city), LIMITS.cityChars),
     platform: clampString(asString(src.platform), LIMITS.platformChars),
+    emergencyName: clampString(asString(src.emergencyName), LIMITS.nameChars),
+    emergencyPhone: clampString(asString(src.emergencyPhone), 20),
   };
 }
 
@@ -66,13 +79,20 @@ function sanitizeEarnings(raw: unknown): EarningEntry[] {
   return raw
     .filter(isRecord)
     .slice(0, 60)
-    .map((item, index) => ({
-      id: clampString(asString(item.id, `e-${index}`), 64),
-      date: clampString(asString(item.date), 32),
-      amount: Math.max(0, Math.min(Number(item.amount) || 0, 1_000_000)),
-      hours: Math.max(0, Math.min(Number(item.hours) || 0, 24)),
-      note: clampString(asString(item.note), 200),
-    }))
+    .map((item, index) => {
+      const platformRaw = asString(item.platform, "other");
+      const platform = PLATFORMS.has(platformRaw)
+        ? (platformRaw as EarningEntry["platform"])
+        : "other";
+      return {
+        id: clampString(asString(item.id, `e-${index}`), 64),
+        date: clampString(asString(item.date), 32),
+        amount: Math.max(0, Math.min(Number(item.amount) || 0, 1_000_000)),
+        hours: Math.max(0, Math.min(Number(item.hours) || 0, 24)),
+        note: clampString(asString(item.note), 200),
+        platform,
+      };
+    })
     .filter((e) => e.amount > 0 || e.note);
 }
 
@@ -81,11 +101,13 @@ export function sanitizeContext(raw: unknown): WorkerContext {
   return {
     profile: sanitizeProfile(src.profile),
     earnings: sanitizeEarnings(src.earnings),
+    templates: [],
     lastSafetyTopic: clampString(asString(src.lastSafetyTopic), 120) || undefined,
     lastRightsTopic: clampString(asString(src.lastRightsTopic), 120) || undefined,
     lastDocumentSummary:
       clampString(asString(src.lastDocumentSummary), 500) || undefined,
     draftGrievance: clampString(asString(src.draftGrievance), 3000) || undefined,
+    lastShiftAdvice: clampString(asString(src.lastShiftAdvice), 2000) || undefined,
   };
 }
 

@@ -1,29 +1,52 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CheatSheets } from "@/components/CheatSheets";
+import { DocumentsPanel } from "@/components/DocumentsPanel";
 import { EarningsPanel } from "@/components/EarningsPanel";
 import { SetupForm } from "@/components/SetupForm";
+import { ShiftPlanner } from "@/components/ShiftPlanner";
+import { SosPanel } from "@/components/SosPanel";
 import { SpeakRepliesToggle, VoiceMicButton } from "@/components/VoiceBar";
+import { TemplatesPanel } from "@/components/TemplatesPanel";
 import { ApiError, postChat } from "@/lib/api";
+import { cacheCheatSheets } from "@/lib/cheatsheets";
 import { LIMITS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import { RIGHTS_PROMPTS, SAFETY_PROMPTS } from "@/lib/prompts";
 import { loadContext, saveContext } from "@/lib/storage";
+import { defaultTemplates } from "@/lib/templates";
 import { speakText, stopSpeaking, subscribeSpeaking } from "@/lib/voice";
 import type {
   ChatMessage,
   CompanionMode,
   EarningEntry,
+  SavedTemplate,
   WorkerContext,
   WorkerProfile,
 } from "@/lib/types";
 
-const MODES: { id: CompanionMode; key: "chat" | "earnings" | "safety" | "rights" | "documents" | "grievance" }[] = [
+const MODES: {
+  id: CompanionMode;
+  key:
+    | "chat"
+    | "earnings"
+    | "shift"
+    | "sos"
+    | "safety"
+    | "rights"
+    | "documents"
+    | "templates"
+    | "grievance";
+}[] = [
   { id: "chat", key: "chat" },
   { id: "earnings", key: "earnings" },
+  { id: "shift", key: "shift" },
+  { id: "sos", key: "sos" },
   { id: "safety", key: "safety" },
   { id: "rights", key: "rights" },
   { id: "documents", key: "documents" },
+  { id: "templates", key: "templates" },
   { id: "grievance", key: "grievance" },
 ];
 
@@ -41,19 +64,22 @@ export function CompanionApp() {
       jobType: "delivery",
       city: "",
       platform: "",
+      emergencyName: "",
+      emergencyPhone: "",
     },
     earnings: [],
+    templates: [],
   }));
   const [mode, setMode] = useState<CompanionMode>("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [docText, setDocText] = useState("");
   const [grievanceIssue, setGrievanceIssue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const liveRef = useRef<HTMLDivElement>(null);
   const speakRepliesRef = useRef(speakReplies);
@@ -82,9 +108,23 @@ export function CompanionApp() {
 
   useEffect(() => {
     const loaded = loadContext();
+    if (!loaded.templates?.length) {
+      loaded.templates = defaultTemplates(loaded.profile);
+    }
     setCtx(loaded);
     setOnboarded(Boolean(loaded.profile.name));
+    cacheCheatSheets(loaded.profile.jobType);
+    setOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
     setReady(true);
+
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -163,6 +203,9 @@ export function CompanionApp() {
           ...c,
           lastDocumentSummary: reply.slice(0, 400),
         }));
+      }
+      if (nextMode === "shift") {
+        setCtx((c) => ({ ...c, lastShiftAdvice: reply }));
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
@@ -270,8 +313,12 @@ export function CompanionApp() {
               aria-current={mode === m.id ? "page" : undefined}
               className={`shrink-0 rounded-full px-3 py-1.5 text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--hi-vis)] ${
                 mode === m.id
-                  ? "bg-[var(--hi-vis)] font-semibold text-[var(--ink)]"
-                  : "border border-[var(--line)] text-[var(--mist)] hover:text-[var(--paper)]"
+                  ? m.id === "sos"
+                    ? "bg-[var(--danger)] font-semibold text-white"
+                    : "bg-[var(--hi-vis)] font-semibold text-[var(--ink)]"
+                  : m.id === "sos"
+                    ? "border border-[var(--danger)]/50 text-[var(--danger)]"
+                    : "border border-[var(--line)] text-[var(--mist)] hover:text-[var(--paper)]"
               }`}
             >
               {t(lang, m.key)}
@@ -297,6 +344,7 @@ export function CompanionApp() {
             <EarningsPanel
               language={lang}
               earnings={ctx.earnings}
+              defaultPlatform={ctx.profile.platform}
               onAdd={addEarning}
               onAsk={(prompt) => void askGrok(prompt, "earnings")}
               onDispute={(prompt) => {
@@ -306,120 +354,147 @@ export function CompanionApp() {
             />
           )}
 
-          {mode === "safety" && (
-            <ToolBlock
-              title={t(lang, "safetyTitle")}
-              actions={[
-                {
-                  label: "Job checklist",
-                  run: () =>
-                    void askGrok(
-                      SAFETY_PROMPTS[ctx.profile.jobType] || SAFETY_PROMPTS.other,
-                      "safety",
-                      { lastSafetyTopic: ctx.profile.jobType },
-                    ),
-                },
-                {
-                  label: "Night shift tips",
-                  run: () =>
-                    void askGrok(
-                      "Give night-shift safety tips for my job, including how to stay visible and what to do if I feel unsafe.",
-                      "safety",
-                      { lastSafetyTopic: "night shift" },
-                    ),
-                },
-                {
-                  label: "After an accident",
-                  run: () =>
-                    void askGrok(
-                      "What should I do step-by-step after a road or workplace accident as a gig/informal worker?",
-                      "safety",
-                      { lastSafetyTopic: "accident" },
-                    ),
-                },
-              ]}
+          {mode === "shift" && (
+            <ShiftPlanner
+              language={lang}
+              profile={ctx.profile}
+              earnings={ctx.earnings}
+              lastAdvice={ctx.lastShiftAdvice}
+              pending={pending}
+              onAsk={(prompt) => void askGrok(prompt, "shift")}
             />
+          )}
+
+          {mode === "sos" && (
+            <SosPanel
+              language={lang}
+              profile={ctx.profile}
+              onSaveContact={(name, phone) =>
+                setCtx((c) => ({
+                  ...c,
+                  profile: {
+                    ...c.profile,
+                    emergencyName: name,
+                    emergencyPhone: phone,
+                  },
+                }))
+              }
+              onAskSafety={(prompt) => void askGrok(prompt, "sos")}
+            />
+          )}
+
+          {mode === "safety" && (
+            <div className="flex h-full flex-col overflow-y-auto scrollbar-thin">
+              <ToolBlock
+                title={t(lang, "safetyTitle")}
+                actions={[
+                  {
+                    label: "Open SOS pack",
+                    run: () => setMode("sos"),
+                  },
+                  {
+                    label: "Job checklist",
+                    run: () =>
+                      void askGrok(
+                        SAFETY_PROMPTS[ctx.profile.jobType] || SAFETY_PROMPTS.other,
+                        "safety",
+                        { lastSafetyTopic: ctx.profile.jobType },
+                      ),
+                  },
+                  {
+                    label: "Night shift tips",
+                    run: () =>
+                      void askGrok(
+                        "Give night-shift safety tips for my job, including how to stay visible and what to do if I feel unsafe.",
+                        "safety",
+                        { lastSafetyTopic: "night shift" },
+                      ),
+                  },
+                  {
+                    label: "After an accident",
+                    run: () =>
+                      void askGrok(
+                        "What should I do step-by-step after a road or workplace accident as a gig/informal worker?",
+                        "safety",
+                        { lastSafetyTopic: "accident" },
+                      ),
+                  },
+                ]}
+              />
+              <CheatSheets jobType={ctx.profile.jobType} online={online} />
+            </div>
           )}
 
           {mode === "rights" && (
-            <ToolBlock
-              title={t(lang, "rightsTitle")}
-              actions={[
-                {
-                  label: "My rights",
-                  run: () =>
-                    void askGrok(
-                      RIGHTS_PROMPTS[ctx.profile.jobType] || RIGHTS_PROMPTS.other,
-                      "rights",
-                      { lastRightsTopic: "rights overview" },
-                    ),
-                },
-                {
-                  label: "e-SHRAM & schemes",
-                  run: () =>
-                    void askGrok(
-                      "Explain e-SHRAM and other welfare schemes I may qualify for, and how to register in simple steps.",
-                      "rights",
-                      { lastRightsTopic: "e-SHRAM" },
-                    ),
-                },
-                {
-                  label: "Unpaid wages",
-                  run: () =>
-                    void askGrok(
-                      "What can I do if my platform or employer delayed or cut my pay? Give practical steps and when to escalate.",
-                      "rights",
-                      { lastRightsTopic: "unpaid wages" },
-                    ),
-                },
-              ]}
-            />
+            <div className="flex h-full flex-col overflow-y-auto scrollbar-thin">
+              <ToolBlock
+                title={t(lang, "rightsTitle")}
+                actions={[
+                  {
+                    label: "My rights",
+                    run: () =>
+                      void askGrok(
+                        RIGHTS_PROMPTS[ctx.profile.jobType] || RIGHTS_PROMPTS.other,
+                        "rights",
+                        { lastRightsTopic: "rights overview" },
+                      ),
+                  },
+                  {
+                    label: "e-SHRAM & schemes",
+                    run: () =>
+                      void askGrok(
+                        "Explain e-SHRAM and other welfare schemes I may qualify for, and how to register in simple steps.",
+                        "rights",
+                        { lastRightsTopic: "e-SHRAM" },
+                      ),
+                  },
+                  {
+                    label: "Unpaid wages",
+                    run: () =>
+                      void askGrok(
+                        "What can I do if my platform or employer delayed or cut my pay? Give practical steps and when to escalate.",
+                        "rights",
+                        { lastRightsTopic: "unpaid wages" },
+                      ),
+                  },
+                ]}
+              />
+              <CheatSheets jobType={ctx.profile.jobType} online={online} />
+            </div>
           )}
 
           {mode === "documents" && (
-            <div className="flex h-full flex-col gap-3">
-              <h3 className="font-display text-xl font-bold">{t(lang, "docsTitle")}</h3>
-              <p className="text-sm text-[var(--mist)]">{t(lang, "docsHint")}</p>
-              <textarea
-                value={docText}
-                onChange={(e) =>
-                  setDocText(e.target.value.slice(0, LIMITS.documentChars))
-                }
-                rows={10}
-                maxLength={LIMITS.documentChars}
-                aria-label={t(lang, "docsTitle")}
-                className="min-h-0 flex-1 resize-none rounded-2xl border border-[var(--line)] bg-[var(--ink)] p-3 text-sm text-[var(--paper)] outline-none focus:ring-2 focus:ring-[var(--hi-vis)]"
-                placeholder="Paste text here…"
-              />
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={!docText.trim() || pending}
-                  onClick={() =>
-                    void askGrok(
-                      `Explain this document in simple language and list action items:\n\n${docText}`,
-                      "documents",
-                    )
-                  }
-                  className="rounded-xl bg-[var(--hi-vis)] px-4 py-2.5 text-sm font-bold text-[var(--ink)] disabled:opacity-40"
-                >
-                  {t(lang, "generate")}
-                </button>
-                <button
-                  type="button"
-                  disabled={!docText.trim()}
-                  onClick={() => {
-                    setGrievanceIssue(
-                      `Based on this document, I need help raising a dispute:\n${docText.slice(0, 800)}`,
-                    );
-                    setMode("grievance");
-                  }}
-                  className="rounded-xl border border-[var(--line)] px-4 py-2.5 text-sm text-[var(--paper)]"
-                >
-                  {t(lang, "useInGrievance")}
-                </button>
-              </div>
-            </div>
+            <DocumentsPanel
+              language={lang}
+              pending={pending}
+              onExplain={(text) =>
+                void askGrok(
+                  `Explain this document in simple language and list action items:\n\n${text}`,
+                  "documents",
+                )
+              }
+              onDispute={(text) => {
+                setGrievanceIssue(
+                  `Based on this document, I need help raising a dispute:\n${text}`,
+                );
+                setMode("grievance");
+              }}
+            />
+          )}
+
+          {mode === "templates" && (
+            <TemplatesPanel
+              language={lang}
+              templates={ctx.templates}
+              onSave={(templates: SavedTemplate[]) =>
+                setCtx((c) => ({ ...c, templates }))
+              }
+              onUseInChat={(body) => void askGrok(body, "templates")}
+              onUseInGrievance={(body) => {
+                setGrievanceIssue(body);
+                setMode("grievance");
+              }}
+            />
           )}
 
           {mode === "grievance" && (
@@ -428,6 +503,13 @@ export function CompanionApp() {
                 {t(lang, "grievanceTitle")}
               </h3>
               <p className="text-sm text-[var(--mist)]">{t(lang, "grievanceHint")}</p>
+              <button
+                type="button"
+                onClick={() => setMode("templates")}
+                className="self-start text-xs font-semibold text-[var(--hi-vis)] hover:underline"
+              >
+                Open saved templates
+              </button>
               <textarea
                 value={grievanceIssue}
                 onChange={(e) =>

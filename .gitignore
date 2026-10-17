@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Demo artifacts
+demo-video/frames/
+demo-video/ffmpeg
+demo-video/frames.txt
+Untitled

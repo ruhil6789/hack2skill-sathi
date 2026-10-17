@@ -9,7 +9,10 @@ function earningsSummary(ctx: WorkerContext): string {
   const hours = earnings.reduce((s, e) => s + e.hours, 0);
   const recent = earnings
     .slice(0, LIMITS.earningsEntriesInPrompt)
-    .map((e) => `${e.date}: ₹${e.amount} (${e.hours}h)${e.note ? ` — ${e.note}` : ""}`)
+    .map(
+      (e) =>
+        `${e.date} [${e.platform}]: ₹${e.amount} (${e.hours}h)${e.note ? ` — ${e.note}` : ""}`,
+    )
     .join("\n");
   return `Total logged: ₹${total} across ${hours} hours.\nRecent entries:\n${recent}`;
 }
@@ -35,6 +38,8 @@ ${ctx.lastSafetyTopic ? `Recent safety focus: ${ctx.lastSafetyTopic}` : ""}
 ${ctx.lastRightsTopic ? `Recent rights topic: ${ctx.lastRightsTopic}` : ""}
 ${ctx.lastDocumentSummary ? `Last document help: ${ctx.lastDocumentSummary}` : ""}
 ${ctx.draftGrievance ? `Current grievance draft on file:\n${ctx.draftGrievance}` : ""}
+${ctx.lastShiftAdvice ? `Last shift advice:\n${ctx.lastShiftAdvice}` : ""}
+Emergency contact: ${ctx.profile.emergencyName || "not set"} (${ctx.profile.emergencyPhone || "n/a"})
 
 Rules:
 1. ALWAYS reply in ${lang}. Use simple, respectful, practical language. Short paragraphs and bullet points.
@@ -46,10 +51,13 @@ Rules:
 
   const modeHints: Record<CompanionMode, string> = {
     chat: `Mode: General companion. Help with earnings questions, safety, rights, documents, or disputes. Offer to switch focus when relevant.`,
-    earnings: `Mode: Earnings coach. Analyze logged earnings, hourly rate, shortfalls, tips to track pay, and simple budgeting. Suggest logging more days if data is thin.`,
+    earnings: `Mode: Earnings coach. Analyze logged earnings by platform (Swiggy/Uber/cash/etc), hourly rate, shortfalls, and weekly compare. Suggest logging more days if data is thin.`,
+    shift: `Mode: Shift planner. Advise whether to take a shift now using earnings history, city, weather/peak hints in the user message. Be practical about fatigue, rain safety, and likely demand.`,
+    sos: `Mode: Emergency support. Give calm, short steps: call emergency contact, share location, get to a safe public place, contact platform safety line. Do not invent fake helpline numbers.`,
     safety: `Mode: Safety guide. Give job-specific safety practices (road, night shifts, customers, cash handling, heat/rain). Include what to do in an emergency.`,
     rights: `Mode: Rights & welfare. Explain worker rights, platform policies in plain language, and relevant Indian schemes (e-SHRAM, PM-SYM, state labour boards, accident insurance) for this job type. Help check likely eligibility in plain language.`,
-    documents: `Mode: Document helper. Explain payslips, ID forms, app notices, KYC, contracts in plain language. Flag important dates, amounts, and action items.`,
+    documents: `Mode: Document helper. Explain payslips, ID forms, app notices, KYC, contracts (including OCR text) in plain language. Flag important dates, amounts, and action items.`,
+    templates: `Mode: Template helper. Improve short messages for grievances, leave, or customer replies. Keep them polite and ready to copy.`,
     grievance: `Mode: Grievance drafting. Write a clear, polite, factual complaint or dispute note the worker can send to the platform/employer/labour office. Include: who, what, when, amounts if known, desired resolution. Keep it ready to copy-paste. Do not threaten illegally.`,
   };
 

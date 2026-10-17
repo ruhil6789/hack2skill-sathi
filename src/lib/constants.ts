@@ -21,9 +21,12 @@ export const JOB_TYPES_SET = new Set<JobType>([
 export const MODES_SET = new Set<CompanionMode>([
   "chat",
   "earnings",
+  "shift",
+  "sos",
   "safety",
   "rights",
   "documents",
+  "templates",
   "grievance",
 ]);
 

@@ -2,20 +2,29 @@
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
+import { PLATFORMS, platformLabel, weekPlatformBreakdown } from "@/lib/platforms";
 import { todayTotal, weekTotal } from "@/lib/storage";
-import type { EarningEntry, Language } from "@/lib/types";
+import type { EarnPlatform, EarningEntry, Language } from "@/lib/types";
 
 interface Props {
   language: Language;
   earnings: EarningEntry[];
+  defaultPlatform?: string;
   onAdd: (entry: Omit<EarningEntry, "id">) => void;
   onAsk: (prompt: string) => void;
   onDispute: (prompt: string) => void;
 }
 
+function guessDefaultPlatform(raw?: string): EarnPlatform {
+  const s = (raw || "").toLowerCase();
+  const hit = PLATFORMS.find((p) => s.includes(p.id) || s.includes(p.label.toLowerCase()));
+  return hit?.id || "other";
+}
+
 export function EarningsPanel({
   language,
   earnings,
+  defaultPlatform,
   onAdd,
   onAsk,
   onDispute,
@@ -23,9 +32,13 @@ export function EarningsPanel({
   const [amount, setAmount] = useState("");
   const [hours, setHours] = useState("");
   const [note, setNote] = useState("");
+  const [platform, setPlatform] = useState<EarnPlatform>(
+    guessDefaultPlatform(defaultPlatform),
+  );
 
   const week = weekTotal(earnings);
   const today = todayTotal(earnings);
+  const breakdown = weekPlatformBreakdown(earnings);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,6 +50,7 @@ export function EarningsPanel({
       amount: a,
       hours: h,
       note: note.trim(),
+      platform,
     });
     setAmount("");
     setHours("");
@@ -64,10 +78,47 @@ export function EarningsPanel({
         </div>
       </div>
 
+      {breakdown.length > 0 && (
+        <div className="rounded-2xl border border-[var(--line)] bg-[var(--ink)]/40 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-[var(--mist)]">
+            Weekly by platform
+          </div>
+          <ul className="mt-2 space-y-1 text-sm">
+            {breakdown.map((b) => (
+              <li key={b.platform} className="flex justify-between gap-2">
+                <span>
+                  {b.label}
+                  <span className="text-[var(--mist)]">
+                    {b.hours ? ` · ${b.hours}h` : ""}
+                  </span>
+                </span>
+                <span className="font-semibold text-[var(--hi-vis)]">
+                  ₹{b.amount.toLocaleString("en-IN")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <form
         onSubmit={submit}
         className="grid gap-3 rounded-2xl border border-[var(--line)] bg-[var(--panel-raise)] p-4"
       >
+        <label className="grid gap-1 text-xs text-[var(--mist)]">
+          Platform
+          <select
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value as EarnPlatform)}
+            className="rounded-xl border border-[var(--line)] bg-[var(--ink)] px-3 py-2 text-[var(--paper)] outline-none focus:ring-2 focus:ring-[var(--hi-vis)]"
+          >
+            {PLATFORMS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="grid gap-1 text-xs text-[var(--mist)]">
             {t(language, "amount")}
@@ -115,18 +166,22 @@ export function EarningsPanel({
           type="button"
           onClick={() =>
             onAsk(
-              "Review my logged earnings. What is my average hourly rate, and how can I improve this week?",
+              `Compare my earnings across platforms this week and suggest where to focus. Breakdown: ${breakdown
+                .map((b) => `${b.label}=₹${b.amount}`)
+                .join(", ") || "none yet"}.`,
             )
           }
           className="rounded-full border border-[var(--line)] px-3 py-1.5 text-xs text-[var(--paper)] hover:border-[var(--hi-vis)]"
         >
-          {t(language, "useInChat")}
+          Compare platforms
         </button>
         <button
           type="button"
           onClick={() =>
             onDispute(
-              `My logged earnings this week total ₹${week}. I believe I was underpaid or a bonus was missing. Help me draft a grievance.`,
+              `My logged earnings this week total ₹${week} across platforms (${breakdown
+                .map((b) => `${b.label} ₹${b.amount}`)
+                .join(", ")}). I believe I was underpaid. Help me draft a grievance.`,
             )
           }
           className="rounded-full border border-[var(--warn)]/40 px-3 py-1.5 text-xs text-[var(--warn)] hover:bg-[var(--warn)]/10"
@@ -146,7 +201,9 @@ export function EarningsPanel({
                 className="flex items-center justify-between rounded-xl border border-[var(--line)] bg-[var(--ink)]/40 px-3 py-2 text-sm"
               >
                 <div>
-                  <div className="font-medium">{e.date}</div>
+                  <div className="font-medium">
+                    {e.date} · {platformLabel(e.platform)}
+                  </div>
                   <div className="text-xs text-[var(--mist)]">
                     {e.hours ? `${e.hours}h` : "—"}
                     {e.note ? ` · ${e.note}` : ""}

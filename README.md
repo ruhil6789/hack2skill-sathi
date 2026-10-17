@@ -9,11 +9,12 @@ Connected workflows (evaluated as a whole, not isolated features):
 | Need | How Saathi covers it |
 |------|----------------------|
 | Multilingual guidance | Profile language → replies + Whisper language |
-| Earnings tracking | Log pay → ask AI → escalate underpayment to grievance |
-| Safety practices | Job-specific checklists into conversation context |
-| Rights & welfare | e-SHRAM / schemes, tied to job type |
-| Document help | Paste notice → plain-language explain → dispute path |
-| Grievance drafting | Uses profile + earnings + docs context |
+| Earnings tracking | Multi-platform ledger (Swiggy/Uber/cash…) + weekly compare |
+| Safety practices | Checklists + **SOS pack** (location, call, steps) |
+| Rights & welfare | e-SHRAM / schemes + **offline cheat sheets** |
+| Document help | Paste or **photo OCR** → explain → dispute |
+| Grievance drafting | Drafts + **saved templates** (leave/customer too) |
+| Shift decisions | **Shift planner** with earnings + weather/peak hints |
 
 ## Engineering parameters
 

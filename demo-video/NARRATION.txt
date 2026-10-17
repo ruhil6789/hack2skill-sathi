@@ -1,0 +1,17 @@
+Saathi feature demo (~42 seconds silent walkthrough)
+
+Video file: saathi-feature-demo.mp4
+
+Scene order (add your voice over in CapCut / SCRE.IO if needed):
+1. Landing — Saathi for delivery, drivers, daily-wage workers
+2. Ask Saathi — multilingual chat + voice
+3. Earnings — multi-platform ledger (Uber / Swiggy / cash) + weekly compare
+4. Shift planner — weather + peak hints
+5. Shift AI — YES/MAYBE/SKIP recommendation
+6. SOS pack — share location, call contact, checklist
+7. Safety — offline cheat sheets
+8. Documents — paste / photo OCR → explain
+9. Templates — grievance / leave / customer
+10. Grievance — draft with AI using profile + earnings
+
+Tip: For a spoken submission video, play this MP4 fullscreen and record with SCRE.IO "Only Screen", or narrate live while clicking through http://localhost:3000/companion
