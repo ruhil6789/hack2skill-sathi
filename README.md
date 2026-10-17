@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Saathi — Gig Worker Companion
 
-## Getting Started
+Generative AI companion for informal and gig workers (delivery partners, drivers, daily-wage workers). Uses the **Groq** OpenAI-compatible API for chat + Whisper voice.
 
-First, run the development server:
+## Problem alignment
+
+Connected workflows (evaluated as a whole, not isolated features):
+
+| Need | How Saathi covers it |
+|------|----------------------|
+| Multilingual guidance | Profile language → replies + Whisper language |
+| Earnings tracking | Log pay → ask AI → escalate underpayment to grievance |
+| Safety practices | Job-specific checklists into conversation context |
+| Rights & welfare | e-SHRAM / schemes, tied to job type |
+| Document help | Paste notice → plain-language explain → dispute path |
+| Grievance drafting | Uses profile + earnings + docs context |
+
+## Engineering parameters
+
+- **Code quality** — typed domain models, shared validators, thin API routes
+- **Security** — input allowlists, size limits, sanitized client errors (no key leakage)
+- **Efficiency** — truncated history/docs, `max_tokens`, abortable fetches
+- **Testing** — Vitest unit tests for formatting + validation
+- **Accessibility** — labels, live regions, focus rings, `aria-current` / `aria-pressed`
+- **Problem statement alignment** — one companion with linked tool → chat → grievance flows
+
+## Setup
 
 ```bash
+# .env already supports: XAI_API_KEY=gsk_...
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) → **Open companion**.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Environment
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable      | Required | Description |
+|---------------|----------|-------------|
+| `XAI_API_KEY` | Yes      | Groq API key (`gsk_…`) |
+| `XAI_MODEL`   | No       | Default `qwen/qwen3.8-27b` |
